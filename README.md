@@ -1,5 +1,13 @@
 # simple-scraper
 
+#### Description
+Simple HTML scraper with a CLI using [Cheerio](https://cheerio.js.org).
+
+#### Features
+- CLI
+- Target one or more elements via selectors (optional)
+- POSTable REST endpoint for returning scraped content
+
 #### Requirements
 `node >= 17.0.0`
 
