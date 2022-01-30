@@ -2,10 +2,31 @@ import fetch from 'node-fetch'
 import cheerio from 'cheerio'
 
 async function scrapeURL(req, res, next) {
-  const { url, targets = [], includeRaw } = req.body
+  function findElements(selector) {
+    const nodes = $.root().find(selector).toArray()
+
+    return nodes.map(node => {
+      const {
+        name,
+        attribs,
+      } = node
+
+      return {
+        name,
+        attributes: attribs,
+        html: $(node).html(),
+      }
+    })
+  }
+
+  const {
+    url,
+    targetSelectors = [],
+    includeRaw,
+  } = req.body
 
   let raw
-  const result = {}
+  const result = []
 
   try {
     raw = await fetch(url).then(res => res.text())
@@ -15,18 +36,29 @@ async function scrapeURL(req, res, next) {
     return res.json({
       status: 500,
       error: e,
+      result,
     })
   }
 
   const $ = cheerio.load(raw)
 
-  for(const target of targets) {
-    result[target] = $(target).html()
+  for(const selector of targetSelectors) {
+    result.push({
+      selector,
+      elements: findElements(selector)
+    })
+  }
+
+  if(!targetSelectors.length || includeRaw) {
+    result.push({
+      selector: 'html',
+      elements: findElements('html'),
+    })
   }
 
   res.json({
     status: 200,
-    result: Object.assign(result, includeRaw ? { html: $.html() } : {})
+    result,
   })
 }
 
