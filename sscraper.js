@@ -46,7 +46,6 @@ async function scrape(url, targets) {
       const result = await fetch(`${root}/scrape`, {
         headers: {
           'Content-Type': 'application/json',
-          'Content-Type': 'application/json',
         },
         method: 'POST',
         body: JSON.stringify({
