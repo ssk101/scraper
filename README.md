@@ -22,9 +22,9 @@ npm run scrape -u "https://bt.no" -t ".ch-core-header" -t ".footer-wrapper .tips
 
 #### CLI options
 ```
-      --version  Show version number                                                                           [boolean]
-  -u, --url      URL to scrape                                                                       [string] [required]
-  -t, --targets  Optional target element selector(s) (e.g. #main, .something)                                    [array]
-  -r, --raw      Include raw html dump                                                                         [boolean]
-  -h, --help     Show help                                                                                     [boolean]
+      --version  Show version number                                           [boolean]
+  -u, --url      URL to scrape                                                 [string] [required]
+  -t, --targets  Optional target element selector(s) (e.g. #main, .something)  [array]
+  -r, --raw      Include raw html dump                                         [boolean]
+  -h, --help     Show help                                                     [boolean]
 ```
