@@ -1,0 +1,25 @@
+{
+  "name": "simple-scraper-skeleton",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "start": "node --no-warnings --experimental-json-modules",
+    "server": "npm start -- ./index.js",
+    "scrape": "npm start -- ./sscraper.js"
+  },
+  "engines": {
+    "node": ">= 17.0.0"
+  },
+  "dependencies": {
+    "cheerio": "^1.0.0-rc.10",
+    "compression": "^1.7.4",
+    "cors": "^2.8.5",
+    "express": "^4.17.2",
+    "http-errors": "^2.0.0",
+    "http-terminator": "^3.0.4",
+    "node-fetch": "^3.2.0",
+    "yargs": "^17.3.1"
+  }
+}
