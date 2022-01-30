@@ -31,7 +31,7 @@ const argv = yargs(process.argv.slice(2))
   .options(options)
   .help('h')
   .alias('h', 'help')
-  .wrap(80)
+  .wrap(120)
   .argv
 
 const {
