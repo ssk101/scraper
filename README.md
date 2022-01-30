@@ -1,7 +1,7 @@
 # simple-scraper
 
 #### Description
-Simple HTML scraper with a CLI using [Cheerio](https://cheerio.js.org).
+Simple HTML scraper using [Cheerio](https://cheerio.js.org).
 
 #### Features
 - CLI
