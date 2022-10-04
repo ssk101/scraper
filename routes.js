@@ -101,10 +101,15 @@ async function scrapeURL(req, res, next) {
     }, [])
 
     for(const src of sources) {
-      let sanitizedSrc = src.replace(/^\//, '')
-      const mediaURL = `http://${hostname}/${sanitizedSrc}`
+      let mediaURL
       let mediaResponse
-      
+
+      if(src.match(/data:image\/(.*);base64/) || src.match(/http(|s):\/\//)) {
+        mediaURL = src
+      } else {
+        mediaURL = `http://${hostname}/${src.replace(/^\//, '')}`
+      }
+
       try {
         mediaResponse = await fetch(mediaURL)
         const { status, headers } = mediaResponse
@@ -128,7 +133,7 @@ async function scrapeURL(req, res, next) {
         const buffer = await mediaResponse.buffer()
 
         try {
-          let filename = `${mediaDir}/${sanitizedSrc.replace(/\W/g, '.')}`
+          let filename = `${mediaDir}/${src.replace(/\W/g, '.')}`
           
           if(!formats.includes(filename.split('.').pop())) {
             filename += `.${formats[0]}`
