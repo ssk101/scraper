@@ -6,6 +6,9 @@ import fetch from 'node-fetch'
 import yargs from 'yargs'
 import { hideBin } from 'yargs/helpers'
 import config from '../config.json' assert { type: 'json' }
+import Logger from '../utils/logger.js'
+
+const logger = new Logger('[sscraper]')
 
 const { port } = config
 const root = `http://localhost:${port}`
@@ -17,24 +20,40 @@ const options = {
     type: 'string',
     demandOption: true,
   },
+  m: {
+    alias: 'downloadMedia',
+    describe: `Download images from the target selector's child elements matching input formats. Leave empty to check for all standard formats`,
+    type: 'array',
+    default: [
+      'apng',
+      'avif',
+      'bmp',
+      'gif',
+      'jfif',
+      'jpg',
+      'jpeg',
+      'pjpeg',
+      'pjp',
+      'png',
+      'svg',
+      'tif',
+      'tiff',
+      'webp'
+    ],
+  },
   t: {
     alias: 'targetSelectors',
-    describe: 'Optional target element selector(s) (e.g. #main, .something)',
+    describe: `Target selector(s) to scrape and/or search for media sources in. e.g. #main, .some-class, input[name='radios']. Leave blank to target the root html element.`,
     type: 'array',
   },
-  r: {
-    alias: 'includeRaw',
-    describe: 'Include raw html dump',
-    type: 'boolean',
-  },
   f: {
-    alias: 'filename',
-    describe: 'File name to save output to, if provided',
+    alias: 'JSONFilename',
+    describe: 'File name to save JSON output to. Defaults to the URL hostname',
     type: 'string',
   },
-  s: {
-    alias: 'silent',
-    describe: 'Do not output result to terminal',
+  v: {
+    alias: 'verbose',
+    describe: 'Output scraped HTML JSON to the terminal',
     type: 'boolean',
     default: false,
   },
@@ -44,20 +63,26 @@ const argv = yargs(process.argv.slice(2))
   .options(options)
   .help('h')
   .alias('h', 'help')
-  .wrap(120)
+  .wrap(80)
   .argv
 
 const {
   _,
   url,
   targetSelectors,
-  includeRaw,
-  filename,
-  silent,
+  downloadMedia,
+  JSONFilename,
+  verbose,
 } = argv
 
 try {
-  const { result } = await fetch(`${root}/scrape`, {
+  const {
+    formattedData,
+    hostname,
+    mediaItems,
+    JSONFile,
+    mediaDir,
+  } = await fetch(`${root}/scrape`, {
     headers: {
       'Content-Type': 'application/json',
     },
@@ -65,25 +90,23 @@ try {
     body: JSON.stringify({
       url,
       targetSelectors,
-      includeRaw,
+      downloadMedia,
+      JSONFilename,
     })
   })
     .then(res => res.json())
 
-  if(!silent) {
-    console.log(result)
+  if(verbose) {
+    logger.log(formattedData)
   }
-
-  if(filename) {
-    const workingDir = `${process.cwd()}/tmp`
-    fs.ensureDirSync(workingDir)
-    const sanitizedFileName = `${workingDir}/${Date.now()}_${filename.trim()}.json`
-    fs.writeFileSync(sanitizedFileName, JSON.stringify(result, null, 2))
-    console.log(`Result saved to ${sanitizedFileName}`)
+  
+  logger.log('JSON Result saved to:', JSONFile)
+  
+  if(mediaItems) {
+    logger.log('Downloaded', mediaItems, 'media items to', mediaDir)
   }
 } catch (e) {
   throw new Error(e)
 }
 
 process.exit(0)
-
