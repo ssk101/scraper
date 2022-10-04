@@ -19,7 +19,7 @@ Simple HTML scraper using [Cheerio](https://cheerio.js.org).
 
 1. Install dependencies:
 ```bash
-[npm or yarn] i
+[npm or yarn] install
 ```
 
 2. Start the server:
