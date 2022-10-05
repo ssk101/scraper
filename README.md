@@ -5,8 +5,8 @@ Simple HTML scraper using [Cheerio](https://cheerio.js.org).
 
 #### Features
 - CLI
-- Target one or more elements via selectors
-- POSTable REST endpoint for returning scraped content
+- Multiple URL support
+- Target one or more elements via selectors and retrieve their JSON formatted contents
 - Download images by looking for specified input format(s) (or all standard web formats)
 
 #### To be implemented:
