@@ -41,17 +41,17 @@ sscraper -d -u "https://www.bbc.com" -u "https://www.cnn.com" -t "img" -t "artic
  
 #### Scrape the root <html> element by default:
 ```bash
-sscraper -u "https://www.bbc.com"
+sscraper -u "https://www.cnn.com"
 ```
 
-#### Scrape URLs from a file:
+#### Scrape URLs via attribute and file:
 ```bash
-sscraper -u "https://www.reddit.com" -t "img" -l "./tmp/urls.txt"
+sscraper -u "https://www.bbc.com" -t "img" -l "./tmp/urls.txt"
 ```
   
 #### Specify custom attributes for media downloads:
 ```bash
-sscraper -u "https://www.reddit.com" -t "img" -l "./tmp/urls.txt"
+sscraper -u "https://www.bbc.com" -t "img" -a "data-image-source"
 ```
 
 ## CLI arguments
