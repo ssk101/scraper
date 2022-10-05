@@ -34,7 +34,7 @@ const options = {
     alias: 'attribute',
     describe: `Look for the specified attribute(s) on media elements and collect the URL value(s) for download.`,
     type: 'array',
-    default: ['data-src', 'src']
+    default: ['data-src', 'src', 'style']
   },
   t: {
     alias: 'target',

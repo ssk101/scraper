@@ -93,7 +93,20 @@ async function scrapeAll(req, res, next) {
         const { attributes } = element
 
         for(const mediaAttribute of mediaAttributes) {
-          if(attributes[mediaAttribute]) acc.push(attributes[mediaAttribute])
+          const value = attributes[mediaAttribute]
+          
+          if(!value) continue
+
+          if(mediaAttribute === 'style') {
+            let extractedValues = value.match(/(?<=(background|background-image|list-style-image|border-image|border-image-source|mask-image|content|src):(\w+\(|)((.*)url\()("|'|))([^)]*)(?=\))/g)
+              .filter(value => value)
+              .map(value => value.trim())
+              .map(value => value.replace(/['"]/g, ''))
+              
+            acc.push(...extractedValues)
+          } else {
+            acc.push(value)
+          }
         }
       }
 
@@ -131,8 +144,10 @@ async function scrapeAll(req, res, next) {
 
         const buffer = await mediaResponse.buffer()
         const strippedName = mediaURL.pathname
+          .replace(/image(.*);base64.*/g, Date.now())
           .replace(/^\//, '')
           .replace(/[/\\~?%*:|"<>]/g, '.')
+
         let filename = `${mediaDir}/${strippedName}`
 
         if(!formats.includes(strippedName.split('.').pop())) {
