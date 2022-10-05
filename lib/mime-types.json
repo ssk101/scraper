@@ -1,0 +1,34 @@
+{
+  "image/apng": [
+    "apng"
+  ],
+  "image/avif": [
+    "avif"
+  ],
+  "image/bmp": [
+    "bmp"
+  ],
+  "image/gif": [
+    "gif"
+  ],
+  "image/jpeg": [
+    "jpg",
+    "jpeg",
+    "jfif",
+    "pjpeg",
+    "pjp"
+  ],
+  "image/png": [
+    "png"
+  ],
+  "image/svg+xml": [
+    "svg"
+  ],
+  "image/tiff": [
+    "tif",
+    "tiff"
+  ],
+  "image/webp": [
+    "webp"
+  ]
+}

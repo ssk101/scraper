@@ -2,21 +2,10 @@ import fetch from 'node-fetch'
 import fs from 'fs-extra'
 import Logger from './utils/logger.js'
 import { findElements } from './utils/cheerio.js'
+import MIME_TYPES from './lib/mime-types.json' assert { type: 'json' }
 
 const slog = new Logger('[server]')
 const mlog = new Logger('[media download]')
-
-const mediaMimeTypes = {
-  'image/apng': ['apng'],
-  'image/avif': ['avif'],
-  'image/bmp': ['bmp'],
-  'image/gif': ['gif'],
-  'image/jpeg': ['jpg', 'jpeg', 'jfif', 'pjpeg', 'pjp'],
-  'image/png': ['png'],
-  'image/svg+xml': ['svg'],
-  'image/tiff': ['tif', 'tiff'],
-  'image/webp': ['webp'],
-}
 
 function ensureDir(path) {
   try {
@@ -27,70 +16,76 @@ function ensureDir(path) {
   }
 }
 
-async function scrapeURL(req, res, next) {
+async function scrapeAll(req, res, next) {
   const {
-    url,
-    targetSelectors = [],
-    downloadMedia,
-    JSONFilename,
+    urls,
+    targets,
+    formats,
   } = req.body
 
-  const { hostname } = new URL(url)
-  
-  let html
-  let mediaItems = 0
-  const selectorData = []
-  
-  const rootDir = `${process.cwd()}/tmp/${hostname}`
-  const JSONDir = `${rootDir}/JSON`
-  const mediaDir = `${rootDir}/media`
+  const tmpDir = `${process.cwd()}/tmp`
+  let totalMediaItems = 0
 
-  ensureDir(rootDir)
-
-  slog.info('Scraping', { hostname })
-
-  try {
-    html = await fetch(url)
-      .then(res => res.text())
-  } catch (e) {
-    slog.error(e)
-
-    return res.json({
-      status: 500,
-      error: e,
-      result,
-    })
+  for(const href of urls) {
+    await scrapeURL(href)
   }
 
-  for(const selector of targetSelectors) {
-    selectorData.push({
-      selector,
-      elements: findElements(html, selector)
-    })
-  }
+  async function scrapeURL(href) {
+    const url = new URL(href)
+    const { hostname } = url
 
-  if(!targetSelectors.length) {
-    const elements = findElements(html, 'html')
+    let html
+    let mediaItems = 0
 
-    selectorData.push({
-      selector: 'html',
-      elements,
-    })
-  }
+    const selectorData = []
+    const urlDir = `${tmpDir}/${hostname}`
+    const JSONDir = `${urlDir}/JSON`
+    const mediaDir = `${urlDir}/media`
 
-  if(downloadMedia) {
+    ensureDir(urlDir)
     ensureDir(mediaDir)
 
-    const selectedMimeTypes = new Set()
-    
-    for(const [mimeType, formats] of Object.entries(mediaMimeTypes)) {
-      if(downloadMedia.some(format => formats.includes(format))) {
-        selectedMimeTypes.add(mimeType)
+    slog.info('Scraping', { hostname })
+
+    try {
+      html = await fetch(url)
+        .then(res => res.text())
+    } catch (e) {
+      slog.error(e)
+
+      return res.json({
+        status: 500,
+        error: e,
+        result,
+      })
+    }
+
+    for(const selector of targets) {
+      selectorData.push({
+        selector,
+        elements: findElements(html, selector)
+      })
+    }
+
+    if(!targets.length) {
+      const elements = findElements(html, 'html')
+
+      selectorData.push({
+        selector: 'html',
+        elements,
+      })
+    }
+
+    const targetMimeTypes = new Set()
+
+    for(const [mimeType, formats] of Object.entries(MIME_TYPES)) {
+      if(formats.some(format => formats.includes(format))) {
+        targetMimeTypes.add(mimeType)
       }
     }
 
-    if(!selectedMimeTypes.size) {
-      mlog.warn('No valid media formats selected. Valid formats:', Object.values(mediaMimeTypes).flat())
+    if(!targetMimeTypes.size) {
+      mlog.warn('No valid media formats selected. Valid formats:', Object.values(MIME_TYPES).flat())
     }
     const sources = selectorData.reduce((acc, selector) => {
       for(const { attributes = {} } of selector.elements) {
@@ -115,18 +110,18 @@ async function scrapeURL(req, res, next) {
         const { status, headers } = mediaResponse
         const contentLength = +headers.get('content-length')
         const contentType = headers.get('content-type')
-        
+
         if(+status !== 200) {
           mlog.warn('Unsuccessful response.', { status, mediaURL })
           continue
         }
-        
-        if(!selectedMimeTypes.has(contentType)) {
+
+        if(!targetMimeTypes.has(contentType)) {
           mlog.warn('MIME type from response does not match requested format, skipping.', { contentType, mediaURL })
           continue
         }
 
-        const [mimeType, formats] = Object.entries(mediaMimeTypes).find(([mimeType, formats]) => {
+        const [mimeType, formats] = Object.entries(MIME_TYPES).find(([mimeType, formats]) => {
           return contentType === mimeType
         })
 
@@ -134,7 +129,7 @@ async function scrapeURL(req, res, next) {
 
         try {
           let filename = `${mediaDir}/${src.replace(/\W/g, '.')}`
-          
+
           if(!formats.includes(filename.split('.').pop())) {
             filename += `.${formats[0]}`
           }
@@ -152,30 +147,28 @@ async function scrapeURL(req, res, next) {
         continue
       }
     }
+
+    slog.log('Done.')
+
+    ensureDir(JSONDir)
+
+    const formattedData = JSON.stringify(selectorData, null, 2)
+    const JSONFile = `${JSONDir}/${Date.now()}_${hostname.trim()}.json`
+
+    fs.writeFileSync(JSONFile, formattedData)
+    totalMediaItems += mediaItems
   }
-
-  slog.log('Done.')
-
-  ensureDir(JSONDir)
-  
-  const formattedData = JSON.stringify(selectorData, null, 2)
-  const JSONFile = `${JSONDir}/${Date.now()}_${JSONFilename || hostname.trim()}.json`
-  
-  fs.writeFileSync(JSONFile, formattedData)
 
   res.json({
     status: 200,
-    formattedData,
-    hostname,
-    mediaItems,
-    JSONFile,
-    mediaDir,
+    totalMediaItems,
+    tmpDir,
   })
 }
 
 export const routes = {
   '/scrape': {
     method: 'post',
-    handlers: [scrapeURL],
+    handlers: [scrapeAll],
   },
 }

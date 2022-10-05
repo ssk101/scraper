@@ -1,19 +1,35 @@
 {
-  "name": "simple-scraper-skeleton",
+  "name": "@ssk101/simple-scraper",
+  "author": "ssk101",
   "version": "1.0.0",
+  "license": "GPL-3.0-or-later",
+  "description": "CLI for scraping web pages via targeted selectors.",
+  "keywords": [
+    "scraper",
+    "javascript",
+    "html scraping",
+    "image scraper"
+  ],
+  "bugs": {
+    "url": "https://github.com/ssk101/simple-scraper/issues"
+  },
+  "homepage": "https://github.com/ssk101/simple-scraper#readme",
+  "repository": {
+    "type": "git",
+    "url": "ssh://git@github.com/ssk101/simple-scraper.git"
+  },
   "main": "index.js",
-  "license": "MIT",
   "type": "module",
   "scripts": {
     "node": "node --no-warnings --experimental-json-modules",
     "server": "npm run node -- ./index.js",
-    "scrape": "./bin/sscraper.js"
+    "scrape": "./bin/simple-scraper.js"
   },
   "bin": {
-    "sscraper": "./bin/sscraper.js"
+    "sscraper": "./bin/simple-scraper.js"
   },
   "engines": {
-    "node": ">= 17.0.0"
+    "node": ">= 17.5.0"
   },
   "dependencies": {
     "cheerio": "^1.0.0-rc.10",

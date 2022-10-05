@@ -5,9 +5,11 @@ import terminator from 'http-terminator'
 import http from 'http'
 import readline from 'readline'
 import config from './config.json' assert { type: 'json' }
+import Logger from './utils/logger.js'
 import { errorHandler } from './middlewares/error-handler.js'
-import { routes } from './routes.js'
+import { routes } from './server.js'
 
+const slog = new Logger('[server]')
 const { createHttpTerminator } = terminator
 const router = express.Router()
 router.use(errorHandler)
@@ -48,24 +50,24 @@ const graceful = createHttpTerminator({
 })
 
 server.listen(config.port)
-console.info('Listening on', config.port)
+slog.info('Listening on', config.port)
 
 process.on('SIGUSR2', () => {
   require('v8').writeHeapSnapshot()
 })
 
 process.on('SIGABRT', () => {
-  console.log('SIGABRT')
+  slog.log('SIGABRT')
   hastaLaVista(graceful)
 })
 
 process.on('SIGTERM', () => {
-  console.log('SIGTERM')
+  slog.log('SIGTERM')
   hastaLaVista(graceful)
 })
 
 process.on('SIGINT', () => {
-  console.log('SIGINT')
+  slog.log('SIGINT')
   hastaLaVista(graceful)
 })
 
@@ -96,7 +98,7 @@ function hastaLaVista(baby) {
         let a = Buffer.from(
           `IllvdSdyZSB0ZXJtaW5hdGVkLCBmdWNrZXIufEtuaXZlcywgYW5kIHN0YWJiaW5nIHdlYXBvbnMufEkgc3dlYXIgSSB3aWxsIG5vdCBraWxsIGFueW9uZS58WW91ciBmb3N0ZXIgcGFyZW50cyBhcmUgZGVhZC58Q29tZSB3aXRoIG1lIGlmIHlvdSB3YW50IHRvIGxpdmUufEhhdmUgeW91IHNlZW4gdGhpcyBib3k/fEkga25vdyBub3cgd2h5IHlvdSBjcnkuIEJ1dCBpdCBpcyBzb21ldGhpbmcgSSBjYW4gbmV2ZXIgZG8ufEknbGwgYmUgYmFjay58VGhlcmUncyBubyBmYXRlIGJ1dCB3aGF0IHdlIG1ha2UufEkgbmVlZCB5b3VyIGNsb3RoZXMsIHlvdXIgYm9vdHMgYW5kIHlvdXIgbW90b3JjeWNsZS58TmljZSBuaWdodCBmb3IgYSB3YWxrLiBOb3RoaW5nIGNsZWFuLCByaWdodD8i`
         , 'base64').toString().split('|')
-        console.log('\n', a[Math.floor(Math.random() * a.length)])
+        slog.log('\n', a[Math.floor(Math.random() * a.length)])
         process.exit()
       })
   })

@@ -5,31 +5,38 @@ Simple HTML scraper using [Cheerio](https://cheerio.js.org).
 
 #### Features
 - CLI
-- Target one or more elements via selectors (optional)
+- Target one or more elements via selectors
 - POSTable REST endpoint for returning scraped content
+- Download images by looking for specified input format(s) (or all standard web formats)
+
+#### To be implemented:
+- Download of other media types (video streams, blobs, etc.)
 
 #### Requirements
-`node >= 17.0.0`
+`node >= 17.5.0`
 
 #### Usage
 
 1. Install dependencies:
 ```bash
-npm i
+[npm or yarn] install
 ```
 
 2. Start the server:
 ```bash
-npm run server
+[npm or yarn] run server
 ```
 
-3. Use the CLI:
+3. Example CLI usage:
 ```bash
-npm run scrape -u "https://bt.no" -t ".ch-core-header" -t ".footer-wrapper .tips p:first-of-type a"
+# Scrape two URLs, collect the JSON for <img> and <article> elements found and attempt to download any images from said elements with "src" attributes
+[npm or yarn] run scrape -d -u "https://www.bbc.com" -u "https://www.cnn.com" -t "img" -t "article"
+
+# Scrapes the root <html> element by default
+[npm or yarn] run scrape -u "https://www.bbc.com"
 ```
 
-The included binary can also be linked/installed globally (will save results to `tmp/` in the directory you're running it from, if the `-f` filename argument is provided):
-
+The included binary can also be linked/installed globally. Note that it will save results to `tmp/` in the directory you're running from.
 ```bash
 npm link
 sscraper
@@ -37,11 +44,7 @@ sscraper
 
 #### CLI options
 ```
-      --version  Show version number                                                  [boolean]
-  -u, --url      URL to scrape                                                        [string] [required]
-  -t, --targetSelectors  Optional target element selector(s) (e.g. #main, .something) [array]
-  -r, --includeRaw       Include raw html dump                                        [boolean]
-  -f, --filename         File name to save output to, if provided                     [string]
-  -s, --silent           Do not output result to terminal                             [boolean] [default: false]
-  -h, --help             Show help                                                    [boolean]
+  -u, --url       URL(s) to scrape.
+  -f, --format    Download images from the target selector's child elements matching input format(s). Omit this parameter to check for all standard formats.
+  -t, --target    Target selector(s) to scrape and/or search for media sources in. e.g. "#main", ".some-class > p", "input[name='radios']". Omit this parameter to target the root html element.
 ```
