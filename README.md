@@ -50,5 +50,6 @@ sscraper
   -u, --url       URL(s) to scrape.
   -l, --list      Path to a file containing newline-separated list of URLs.
   -f, --format    Download images from the target selector's child elements matching input format(s). Omit this parameter to check for all standard formats.
+  -a --attribute  Look for the specified attribute(s) on media elements and collect the URL value(s) for download.
   -t, --target    Target selector(s) to scrape and/or search for media sources in. e.g. "#main", ".some-class > p", "input[name='radios']". Omit this parameter to target the root html element.
 ```

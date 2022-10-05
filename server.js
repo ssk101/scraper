@@ -21,6 +21,7 @@ async function scrapeAll(req, res, next) {
     urls,
     targets,
     formats,
+    mediaAttributes,
   } = req.body
 
   const tmpDir = `${process.cwd()}/tmp`
@@ -88,8 +89,12 @@ async function scrapeAll(req, res, next) {
       mlog.warn('No valid media formats selected. Valid formats:', Object.values(MIME_TYPES).flat())
     }
     const sources = selectorData.reduce((acc, selector) => {
-      for(const { attributes = {} } of selector.elements) {
-        if(attributes.src) acc.push(attributes.src)
+      for(const element of selector.elements) {
+        const { attributes } = element
+
+        for(const mediaAttribute of mediaAttributes) {
+          if(attributes[mediaAttribute]) acc.push(attributes[mediaAttribute])
+        }
       }
 
       return acc

@@ -30,6 +30,12 @@ const options = {
     type: 'array',
     default: Object.values(mimeTypes).flat(),
   },
+  a: {
+    alias: 'attribute',
+    describe: `Look for the specified attribute(s) on media elements and collect the URL value(s) for download.`,
+    type: 'array',
+    default: ['data-src', 'src']
+  },
   t: {
     alias: 'target',
     describe: `Target selector(s) to scrape and/or search for media sources in. e.g. "#main", ".some-class > p", "input[name='radios']". Omit this parameter to target the root html element.`,
@@ -50,6 +56,7 @@ const {
   list: listFilePath,
   target: targets,
   format: formats,
+  attribute: mediaAttributes,
 } = argv
 
 if(!argURLs.length && !listFilePath) {
@@ -83,6 +90,7 @@ try {
       urls: Array.from(urls),
       targets,
       formats,
+      mediaAttributes,
     })
   })
     .then(res => res.json())
