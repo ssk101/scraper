@@ -1,51 +1,60 @@
 # simple-scraper
 
-#### Description
+### Description
 Simple HTML scraper using [Cheerio](https://cheerio.js.org).
 
-#### Features
+### Features
 - CLI
-- Multiple URL support
-- Target one or more elements via selectors and retrieve their JSON formatted contents
-- Download images by looking for specified input format(s) (or all standard web formats)
+- Multiple URL targets
+- Multiple selector targets
+- Supply list of URLs to scrape from file
+- Save the resulting DOM tree as JSON per hostname
+- Find image URLs in element attributes, including `style` CSS content
+- Provide element attributes to check for media URLs
+- Provide media formats to target specific MIME types for media downloads
+- Organizes directories per hostname and sanitizes downloaded media filenames
 
-#### To be implemented:
+### To be implemented:
 - Download of other media types (video streams, blobs, etc.)
 
-#### Requirements
-`node >= 17.5.0`
-
-#### Usage
-
-1. Install dependencies:
+## Setup
+#### Install dependencies:
 ```bash
-[npm or yarn] install
+npm install
 ```
 
-2. Start the server:
-```bash
-[npm or yarn] run server
-```
-
-3. Example CLI usage:
-```bash
-# Scrape two URLs, collect the JSON for <img> and <article> elements found and attempt to download any images from said elements with "src" attributes
-[npm or yarn] run scrape -d -u "https://www.bbc.com" -u "https://www.cnn.com" -t "img" -t "article"
-
-# Scrapes the root <html> element by default
-[npm or yarn] run scrape -u "https://www.bbc.com"
-
-# Scrape URLs from a file
-[npm or yarn] run scrape -u "https://www.reddit.com" -t "img" -l "./tmp/urls.txt"
-```
-
-The included binary can also be linked/installed globally. Note that it will save results to `tmp/` in the directory you're running from.
+#### Make the CLI globally linked
 ```bash
 npm link
-sscraper
 ```
 
-#### CLI options
+#### Start the server
+```bash
+npm run server
+```
+
+## Usage
+#### Scrape two URLs, collect the JSON for <img> and <article> elements found and attempt to download their media content:
+```bash
+sscraper -d -u "https://www.bbc.com" -u "https://www.cnn.com" -t "img" -t "article"
+```
+ 
+#### Scrape the root <html> element by default:
+```bash
+sscraper -u "https://www.bbc.com"
+```
+
+#### Scrape URLs from a file:
+```bash
+sscraper -u "https://www.reddit.com" -t "img" -l "./tmp/urls.txt"
+```
+  
+#### Specify custom attributes for media downloads:
+```bash
+sscraper -u "https://www.reddit.com" -t "img" -l "./tmp/urls.txt"
+```
+
+## CLI arguments
 ```
   -u, --url       URL(s) to scrape.
   -l, --list      Path to a file containing newline-separated list of URLs.
