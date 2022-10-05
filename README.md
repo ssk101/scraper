@@ -34,6 +34,9 @@ Simple HTML scraper using [Cheerio](https://cheerio.js.org).
 
 # Scrapes the root <html> element by default
 [npm or yarn] run scrape -u "https://www.bbc.com"
+
+# Scrape URLs from a file
+[npm or yarn] run scrape -u "https://www.reddit.com" -t "img" -l "./tmp/urls.txt"
 ```
 
 The included binary can also be linked/installed globally. Note that it will save results to `tmp/` in the directory you're running from.
@@ -45,6 +48,7 @@ sscraper
 #### CLI options
 ```
   -u, --url       URL(s) to scrape.
+  -l, --list      Path to a file containing newline-separated list of URLs.
   -f, --format    Download images from the target selector's child elements matching input format(s). Omit this parameter to check for all standard formats.
   -t, --target    Target selector(s) to scrape and/or search for media sources in. e.g. "#main", ".some-class > p", "input[name='radios']". Omit this parameter to target the root html element.
 ```
