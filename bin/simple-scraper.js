@@ -4,7 +4,6 @@
 import fs from 'fs-extra'
 import fetch from 'node-fetch'
 import yargs from 'yargs'
-import { hideBin } from 'yargs/helpers'
 import config from '../config.json' assert { type: 'json' }
 import mimeTypes from '../lib/mime-types.json' assert { type: 'json' }
 import Logger from '../utils/logger.js'
@@ -19,7 +18,11 @@ const options = {
     alias: 'url',
     describe: 'URL(s) to scrape.',
     type: 'array',
-    demandOption: true,
+  },
+  l: {
+    alias: 'list',
+    describe: `Path to a file containing newline-separated list of URLs.`,
+    type: 'string',
   },
   f: {
     alias: 'format',
@@ -43,10 +46,29 @@ const argv = yargs(process.argv.slice(2))
 
 const {
   _,
-  url: urls,
+  url: argURLs = [],
+  list: listFilePath,
   target: targets,
   format: formats,
 } = argv
+
+if(!argURLs.length && !listFilePath) {
+  throw new Error('At least one of the arguments for supplying URL(s) must be provided.')
+}
+
+let listContent = []
+
+try {
+  listContent = fs.readFileSync(listFilePath, 'utf-8')
+    .split('\n')
+    .map(line => line.trim())
+    .filter(line => line)
+  
+} catch (e) {
+  throw new Error(e)
+}
+
+const urls = new Set([...argURLs, ...listContent])
 
 try {
   const {
@@ -58,7 +80,7 @@ try {
     },
     method: 'POST',
     body: JSON.stringify({
-      urls,
+      urls: Array.from(urls),
       targets,
       formats,
     })

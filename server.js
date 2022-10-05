@@ -78,8 +78,8 @@ async function scrapeAll(req, res, next) {
 
     const targetMimeTypes = new Set()
 
-    for(const [mimeType, formats] of Object.entries(MIME_TYPES)) {
-      if(formats.some(format => formats.includes(format))) {
+    for(const [mimeType, fmts] of Object.entries(MIME_TYPES)) {
+      if(fmts.some(format => formats.includes(format))) {
         targetMimeTypes.add(mimeType)
       }
     }
@@ -100,15 +100,14 @@ async function scrapeAll(req, res, next) {
       let mediaResponse
 
       if(src.match(/data:image\/(.*);base64/) || src.match(/http(|s):\/\//)) {
-        mediaURL = src
+        mediaURL = new URL(src)
       } else {
-        mediaURL = `http://${hostname}/${src.replace(/^\//, '')}`
+        mediaURL = new URL(`http://${hostname}/${src.replace(/^\//, '')}`)
       }
 
       try {
         mediaResponse = await fetch(mediaURL)
         const { status, headers } = mediaResponse
-        const contentLength = +headers.get('content-length')
         const contentType = headers.get('content-type')
 
         if(+status !== 200) {
@@ -121,27 +120,38 @@ async function scrapeAll(req, res, next) {
           continue
         }
 
-        const [mimeType, formats] = Object.entries(MIME_TYPES).find(([mimeType, formats]) => {
-          return contentType === mimeType
+        const [mimeType, formats] = Object.entries(MIME_TYPES).find(([type, fmts]) => {
+          return contentType === type
         })
 
         const buffer = await mediaResponse.buffer()
+        const strippedName = mediaURL.pathname
+          .replace(/^\//, '')
+          .replace(/[/\\~?%*:|"<>]/g, '.')
+        let filename = `${mediaDir}/${strippedName}`
+
+        if(!formats.includes(strippedName.split('.').pop())) {
+          filename += `.${formats[0]}`
+        }
 
         try {
-          let filename = `${mediaDir}/${src.replace(/\W/g, '.')}`
-
-          if(!formats.includes(filename.split('.').pop())) {
-            filename += `.${formats[0]}`
-          }
-
           fs.writeFileSync(filename, buffer, 'binary')
         } catch (e) {
-          mlog.error('Unable to write file', { mediaURL, mediaDir })
+          mlog.error('Unable to write file', { filename })
           throw new Error(e)
         }
 
         mediaItems += 1
-        mlog.log(`(${mediaItems.toString().padStart(sources.length.toString().length, 0)}/${sources.length})`, 'Downloaded', mediaURL)
+        
+        mlog.log([
+          [
+            mediaItems.toString().padStart(sources.length.toString().length, 0),
+            '/',
+            sources.length,
+          ].join(''),
+          'Downloaded',
+          filename,
+        ].join(' '))
       } catch (e) {
         mlog.warn('GET request failed.', { e, mediaURL })
         continue
