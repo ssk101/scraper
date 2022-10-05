@@ -1,4 +1,5 @@
 # simple-scraper
+![dali_hacker_banner](https://user-images.githubusercontent.com/8112394/194165822-75d9cace-9561-45a7-8f0f-c29d86a79734.png)
 
 ### Description
 Simple HTML scraper using [Cheerio](https://cheerio.js.org).
