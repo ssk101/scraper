@@ -65,14 +65,17 @@ if(!argURLs.length && !listFilePath) {
 
 let listContent = []
 
-try {
-  listContent = fs.readFileSync(listFilePath, 'utf-8')
-    .split('\n')
-    .map(line => line.trim())
-    .filter(line => line)
-  
-} catch (e) {
-  throw new Error(e)
+if(listFilePath) {
+  try {
+    listContent = fs.readFileSync(listFilePath, 'utf-8')
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => line)
+
+  } catch (e) {
+    clog.error(`Couldn't read list file at ${listFilePath}.`)
+    throw new Error(e)
+  }
 }
 
 const urls = new Set([...argURLs, ...listContent])
