@@ -7,6 +7,15 @@ import MIME_TYPES from './lib/mime-types.json' assert { type: 'json' }
 const slog = new Logger('[server]')
 const mlog = new Logger('[media download]')
 
+async function tryFetch(url) {
+  try {
+    return fetch(url, { signal: AbortSignal.timeout(5000) })
+  } catch (e) {
+    slog.error(e)
+    throw e
+  }
+}
+
 function ensureDir(path) {
   try {
     fs.ensureDirSync(path)
@@ -49,11 +58,9 @@ async function scrapeAll(req, res, next) {
     slog.info('Scraping', { hostname })
 
     try {
-      html = await fetch(url)
+      html = await tryFetch(url)
         .then(res => res.text())
     } catch (e) {
-      slog.error(e)
-
       return res.json({
         status: 500,
         error: e,
@@ -99,11 +106,15 @@ async function scrapeAll(req, res, next) {
 
           if(mediaAttribute === 'style') {
             let extractedValues = value.match(/(?<=(background|background-image|list-style-image|border-image|border-image-source|mask-image|content|src):(\w+\(|)((.*)url\()("|'|))([^)]*)(?=\))/g)
+            
+            if(!extractedValues) continue
+            
+            extractedValues = extractedValues
               .filter(value => value)
               .map(value => value.trim())
               .map(value => value.replace(/['"]/g, ''))
               
-            acc.push(...extractedValues)
+            acc.push(...extractedValues || [])
           } else {
             acc.push(value)
           }
@@ -119,12 +130,14 @@ async function scrapeAll(req, res, next) {
 
       if(src.match(/data:image\/(.*);base64/) || src.match(/http(|s):\/\//)) {
         mediaURL = new URL(src)
+      } else if(src.match(/^\/\//)) {
+        mediaURL = new URL(`https://${src}`)
       } else {
-        mediaURL = new URL(`http://${hostname}/${src.replace(/^\//, '')}`)
+        mediaURL = new URL(`http://${hostname}/${src.replace(/^(\/)*/, '')}`)
       }
 
       try {
-        mediaResponse = await fetch(mediaURL)
+        mediaResponse = await tryFetch(mediaURL)
         const { status, headers } = mediaResponse
         const contentType = headers.get('content-type')
 
