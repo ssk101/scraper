@@ -37,9 +37,9 @@ npm run server
 ## Usage
 #### Scrape two URLs, collect the JSON for <img> and <article> elements found and attempt to download their media content:
 ```bash
-sscraper -d -u "https://www.bbc.com" -u "https://www.cnn.com" -t "img" -t "article"
+sscraper -u "https://www.bbc.com" -u "https://www.cnn.com" -t "img" -t "article"
 ```
- 
+
 #### Scrape the root <html> element by default:
 ```bash
 sscraper -u "https://www.cnn.com"
@@ -49,7 +49,7 @@ sscraper -u "https://www.cnn.com"
 ```bash
 sscraper -u "https://www.bbc.com" -t "img" -l "./tmp/urls.txt"
 ```
-  
+
 #### Specify custom attributes for media downloads:
 ```bash
 sscraper -u "https://www.bbc.com" -t "img" -a "data-image-source"

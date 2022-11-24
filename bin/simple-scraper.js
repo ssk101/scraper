@@ -2,11 +2,13 @@
 ":" //# hello there ; exec /usr/bin/env node --experimental-json-modules --no-warnings "$0" "$@"
 
 import fs from 'fs-extra'
+import path from 'path'
 import fetch from 'node-fetch'
 import yargs from 'yargs'
 import config from '../config.json' assert { type: 'json' }
 import mimeTypes from '../lib/mime-types.json' assert { type: 'json' }
 import Logger from '../utils/logger.js'
+import { attempt } from '../services/handlers.js'
 
 const clog = new Logger('[simple-scraper]')
 const port = process.env.PORT || config.port
@@ -21,7 +23,36 @@ const options = {
   },
   l: {
     alias: 'list',
-    describe: `Path to a file containing newline-separated list of URLs.`,
+    describe: `
+    Path to a file containing list of URLs. Can be newline-seperated plaintext or JSON. If JSON, the file extension must be .json and the list of URLs must be formatted with an array of objects like the below example. Target selectors and/or attributes can also be defined in the JSON structure.
+
+    Example JSON format:
+
+    [
+      {
+        "targets": [
+          ".media__image .responsive-image > img",
+          ".rectangle-image picture img"
+        ],
+        "urls": [
+          "https://bbc.com",
+          "https://www.bbc.com/travel",
+          "https://www.bbc.com/news"
+        ]
+      },
+      {
+        "targets": [
+          ".media > a > img"
+        ],
+        "urls": [
+          "https://cnn.com"
+        ],
+        "attrs": [
+          "data-src"
+        ]
+      }
+    ]
+    `,
     type: 'string',
   },
   f: {
@@ -53,58 +84,68 @@ const argv = yargs(process.argv.slice(2))
 const {
   _,
   url: argURLs = [],
+  target: argTargets,
   list: listFilePath,
-  target: targets,
   format: formats,
-  attribute: mediaAttributes,
+  attribute: argAttributes,
 } = argv
 
 if(!argURLs.length && !listFilePath) {
   throw new Error('At least one of the arguments for supplying URL(s) must be provided.')
 }
 
-let listContent = []
+let combinedContent = []
+let listFileContent
+let parsedFileContent
+let totalItems = 0
 
 if(listFilePath) {
-  try {
-    listContent = fs.readFileSync(listFilePath, 'utf-8')
-      .split('\n')
-      .map(line => line.trim())
-      .filter(line => line)
+  const extension = path.extname(listFilePath)
 
-  } catch (e) {
-    clog.error(`Couldn't read list file at ${listFilePath}.`)
-    throw new Error(e)
-  }
-}
+  listFileContent = await attempt(() => {
+    return fs.readFileSync(listFilePath, 'utf8')
+  }, `Couldn't read list file at ${listFilePath}`)
 
-const urls = new Set([...argURLs, ...listContent])
-
-try {
-  const {
-    totalMediaItems,
-    tmpDir,
-  } = await fetch(`${root}/scrape`, {
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    method: 'POST',
-    body: JSON.stringify({
-      urls: Array.from(urls),
-      targets,
-      formats,
-      mediaAttributes,
+  if(extension === '.json') {
+    parsedFileContent = await attempt(() => {
+      return JSON.parse(listFileContent)
+    }, `Couldn't parse JSON contents from ${listFilePath}`)
+  } else {
+    parsedFileContent = await attempt(() => {
+      const urls = listFileContent.split('\n')
+        .map(url => url.trim())
+        .filter(url => url)
+      return [{ urls }]
     })
-  })
-    .then(res => res.json())
-
-    clog.log('JSON Results saved to:', tmpDir)
-
-  if(totalMediaItems) {
-    clog.log('Downloaded', totalMediaItems, 'media items')
   }
-} catch (e) {
-  throw new Error(e)
+
+  combinedContent.push(...parsedFileContent)
 }
+
+for(const { urls = [], targets = argTargets, attrs = argAttributes } of combinedContent) {
+  const urlSet = new Set([...argURLs, ...urls])
+  const { totalMediaItems, tmpDir } = await attempt(async () => {
+    return fetch(`${root}/scrape`, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      method: 'POST',
+      body: JSON.stringify({
+        urls: Array.from(urlSet),
+        targets,
+        formats,
+        attrs,
+      })
+    })
+      .then(res => res.json())
+  })
+
+  totalItems += +totalMediaItems
+  clog.log('JSON Results saved to:', tmpDir)
+
+  console.log('hello')
+}
+
+clog.log('Downloaded', totalItems, 'media items')
 
 process.exit(0)

@@ -30,8 +30,10 @@ async function scrapeAll(req, res, next) {
     urls,
     targets,
     formats,
-    mediaAttributes,
+    attrs,
   } = req.body
+
+  console.log(urls)
 
   const tmpDir = `${process.cwd()}/tmp`
   let totalMediaItems = 0
@@ -64,7 +66,6 @@ async function scrapeAll(req, res, next) {
       return res.json({
         status: 500,
         error: e,
-        result,
       })
     }
 
@@ -99,21 +100,21 @@ async function scrapeAll(req, res, next) {
       for(const element of selector.elements) {
         const { attributes } = element
 
-        for(const mediaAttribute of mediaAttributes) {
+        for(const mediaAttribute of attrs) {
           const value = attributes[mediaAttribute]
-          
+
           if(!value) continue
 
           if(mediaAttribute === 'style') {
             let extractedValues = value.match(/(?<=(background|background-image|list-style-image|border-image|border-image-source|mask-image|content|src):(\w+\(|)((.*)url\()("|'|))([^)]*)(?=\))/g)
-            
+
             if(!extractedValues) continue
-            
+
             extractedValues = extractedValues
               .filter(value => value)
               .map(value => value.trim())
               .map(value => value.replace(/['"]/g, ''))
-              
+
             acc.push(...extractedValues || [])
           } else {
             acc.push(value)
@@ -175,7 +176,7 @@ async function scrapeAll(req, res, next) {
         }
 
         mediaItems += 1
-        
+
         mlog.log([
           [
             mediaItems.toString().padStart(sources.length.toString().length, 0),
