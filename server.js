@@ -2,16 +2,18 @@ import fetch from 'node-fetch'
 import fs from 'fs-extra'
 import Logger from './utils/logger.js'
 import { findElements } from './utils/cheerio.js'
+import { base62 } from './utils/uid.js'
 import MIME_TYPES from './lib/mime-types.json' assert { type: 'json' }
 
-const slog = new Logger('[server]')
-const mlog = new Logger('[media download]')
+const srvLog = new Logger('[server]')
+const dlLog = new Logger('[media download]')
+let sharp
 
 async function tryFetch(url) {
   try {
     return fetch(url, { signal: AbortSignal.timeout(5000) })
   } catch (e) {
-    slog.error(e)
+    srvLog.error(e)
     throw e
   }
 }
@@ -20,7 +22,7 @@ function ensureDir(path) {
   try {
     fs.ensureDirSync(path)
   } catch (e) {
-    slog.error('Unable to create directory', path)
+    srvLog.error('Unable to create directory', path)
     throw new Error(e)
   }
 }
@@ -29,15 +31,44 @@ async function scrapeAll(req, res, next) {
   const {
     urls,
     targets,
-    formats,
+    mimeTypes,
     mediaAttributes,
+    resize,
+    fit,
   } = req.body
+
+  let width, height
+
+  if(resize) {
+    const dimensions = resize.match(/^(\d+)x(\d+)$/)?.slice(1)
+
+    if(dimensions?.length) {
+      [ width, height ] = dimensions
+    }
+
+    if(!width || !height || isNaN(width) || isNaN(height)) {
+      dlLog.warn('Invalid dimensions for resize provided, skipping resize operation. Got: ', { width, height })
+    } else {
+      sharp = (await import('sharp')).default
+    }
+  }
 
   const tmpDir = `${process.cwd()}/tmp`
   let totalMediaItems = 0
 
   for(const href of urls) {
-    await scrapeURL(href)
+    const rangePattern = /{{(\d+-\d+)}}/
+    const [matched] = href.match(rangePattern)?.slice(1) || []
+
+    if(matched) {
+      const [start, end] = matched?.split('-')
+
+      for(const iter of [...Array(+end - +start + 1).keys()].map(i => i + +start)) {
+        await scrapeURL(href.replace(rangePattern, iter))
+      }
+    } else {
+      await scrapeURL(href)
+    }
   }
 
   async function scrapeURL(href) {
@@ -55,7 +86,7 @@ async function scrapeAll(req, res, next) {
     ensureDir(urlDir)
     ensureDir(mediaDir)
 
-    slog.info('Scraping', { hostname })
+    srvLog.info('Scraping', { url })
 
     try {
       html = await tryFetch(url)
@@ -75,25 +106,16 @@ async function scrapeAll(req, res, next) {
       })
     }
 
-    if(!targets.length) {
-      const elements = findElements(html, 'html')
-
-      selectorData.push({
-        selector: 'html',
-        elements,
-      })
-    }
-
     const targetMimeTypes = new Set()
 
     for(const [mimeType, fmts] of Object.entries(MIME_TYPES)) {
-      if(fmts.some(format => formats.includes(format))) {
+      if(fmts.some(format => mimeTypes.includes(format))) {
         targetMimeTypes.add(mimeType)
       }
     }
 
     if(!targetMimeTypes.size) {
-      mlog.warn('No valid media formats selected. Valid formats:', Object.values(MIME_TYPES).flat())
+      dlLog.warn('No valid media mimeTypes selected. Valid mimeTypes:', Object.values(MIME_TYPES).flat())
     }
     const sources = selectorData.reduce((acc, selector) => {
       for(const element of selector.elements) {
@@ -101,19 +123,19 @@ async function scrapeAll(req, res, next) {
 
         for(const mediaAttribute of mediaAttributes) {
           const value = attributes[mediaAttribute]
-          
+
           if(!value) continue
 
           if(mediaAttribute === 'style') {
             let extractedValues = value.match(/(?<=(background|background-image|list-style-image|border-image|border-image-source|mask-image|content|src):(\w+\(|)((.*)url\()("|'|))([^)]*)(?=\))/g)
-            
+
             if(!extractedValues) continue
-            
+
             extractedValues = extractedValues
               .filter(value => value)
               .map(value => value.trim())
               .map(value => value.replace(/['"]/g, ''))
-              
+
             acc.push(...extractedValues || [])
           } else {
             acc.push(value)
@@ -142,41 +164,47 @@ async function scrapeAll(req, res, next) {
         const contentType = headers.get('content-type')
 
         if(+status !== 200) {
-          mlog.warn('Unsuccessful response.', { status, mediaURL })
+          dlLog.warn('Unsuccessful response.', { status, mediaURL })
           continue
         }
 
         if(!targetMimeTypes.has(contentType)) {
-          mlog.warn('MIME type from response does not match requested format, skipping.', { contentType, mediaURL })
+          dlLog.warn('MIME type from response does not match requested format, skipping.', { contentType, mediaURL })
           continue
         }
 
-        const [mimeType, formats] = Object.entries(MIME_TYPES).find(([type, fmts]) => {
+        const [mimeType, mimeTypes] = Object.entries(MIME_TYPES).find(([type, fmts]) => {
           return contentType === type
         })
 
-        const buffer = await mediaResponse.buffer()
+        let buffer = await mediaResponse.buffer()
         const strippedName = mediaURL.pathname
           .replace(/image(.*);base64.*/g, Date.now())
           .replace(/^\//, '')
           .replace(/[/\\~?%*:|"<>]/g, '.')
 
-        let filename = `${mediaDir}/${strippedName}`
+        let filename = `${mediaDir}/${base62.encode(Date.now())}_${strippedName}`
 
-        if(!formats.includes(strippedName.split('.').pop())) {
-          filename += `.${formats[0]}`
+        if(!mimeTypes.includes(strippedName.split('.').pop())) {
+          filename += `.${mimeTypes[0]}`
+        }
+
+        if(sharp) {
+          buffer = await sharp(buffer)
+            .resize({ width: +width, height: +height, fit })
+            .toBuffer()
         }
 
         try {
           fs.writeFileSync(filename, buffer, 'binary')
         } catch (e) {
-          mlog.error('Unable to write file', { filename })
+          dlLog.error('Unable to write file', { filename })
           throw new Error(e)
         }
 
         mediaItems += 1
-        
-        mlog.log([
+
+        dlLog.log([
           [
             mediaItems.toString().padStart(sources.length.toString().length, 0),
             '/',
@@ -186,12 +214,12 @@ async function scrapeAll(req, res, next) {
           filename,
         ].join(' '))
       } catch (e) {
-        mlog.warn('GET request failed.', { e, mediaURL })
+        dlLog.warn('GET request failed.', { e, mediaURL })
         continue
       }
     }
 
-    slog.log('Done.')
+    srvLog.log('Done.')
 
     ensureDir(JSONDir)
 
@@ -208,6 +236,10 @@ async function scrapeAll(req, res, next) {
     tmpDir,
   })
 }
+
+process.on('SIGINT', () => process.exit())
+process.on('SIGQUIT', () => process.exit())
+process.on('SIGTERM', () => process.exit())
 
 export const routes = {
   '/scrape': {

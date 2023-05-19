@@ -5,7 +5,7 @@ import fs from 'fs-extra'
 import fetch from 'node-fetch'
 import yargs from 'yargs'
 import config from '../config.json' assert { type: 'json' }
-import mimeTypes from '../lib/mime-types.json' assert { type: 'json' }
+import allMimeTypes from '../lib/mime-types.json' assert { type: 'json' }
 import Logger from '../utils/logger.js'
 
 const clog = new Logger('[simple-scraper]')
@@ -24,11 +24,11 @@ const options = {
     describe: `Path to a file containing newline-separated list of URLs.`,
     type: 'string',
   },
-  f: {
-    alias: 'format',
-    describe: `Download images from the target selector's child elements matching input format(s). Omit this parameter to check for all standard formats.`,
+  m: {
+    alias: 'mime-types',
+    describe: `Download images from the target selector's child elements matching input MIME type extensions. Omit this parameter to check for all standard web MIME type extensions.`,
     type: 'array',
-    default: Object.values(mimeTypes).flat(),
+    default: Object.values(allMimeTypes).flat(),
   },
   a: {
     alias: 'attribute',
@@ -38,8 +38,22 @@ const options = {
   },
   t: {
     alias: 'target',
-    describe: `Target selector(s) to scrape and/or search for media sources in. e.g. "#main", ".some-class > p", "input[name='radios']". Omit this parameter to target the root html element.`,
+    describe: `Target selector(s) to scrape and/or search for media sources in. e.g. "#main", ".some-class > p", "input[name='radios']".`,
     type: 'array',
+    default: ['img'],
+  },
+  r: {
+    alias: 'resize',
+    describe: 'Resize downloaded images to specified "[width]x[height]" dimensions. Example: -r 300x300',
+    type: 'string',
+    default: null,
+  },
+  f: {
+    alias: 'fit',
+    describe: 'Method used for fitting when resized, defaults to "contain" which will preserve the aspect ratio and letterboxing the image if needed.',
+    type: 'string',
+    choices: ['cover', 'contain', 'fill', 'inside', 'outside'],
+    default: 'contain',
   },
 }
 
@@ -55,8 +69,10 @@ const {
   url: argURLs = [],
   list: listFilePath,
   target: targets,
-  format: formats,
+  mimeTypes,
   attribute: mediaAttributes,
+  resize,
+  fit,
 } = argv
 
 if(!argURLs.length && !listFilePath) {
@@ -92,8 +108,10 @@ try {
     body: JSON.stringify({
       urls: Array.from(urls),
       targets,
-      formats,
+      mimeTypes,
       mediaAttributes,
+      resize,
+      fit,
     })
   })
     .then(res => res.json())

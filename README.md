@@ -9,11 +9,13 @@ Simple HTML scraper using [Cheerio](https://cheerio.js.org).
 - Multiple URL targets
 - Multiple selector targets
 - Supply list of URLs to scrape from file
+- Scrape a range of pages from the same host via start and end integers
 - Save the resulting DOM tree as JSON per hostname
 - Find image URLs in element attributes, including `style` CSS content
 - Provide element attributes to check for media URLs
 - Provide media formats to target specific MIME types for media downloads
 - Organizes directories per hostname and sanitizes downloaded media filenames
+- Resize downloaded images via sharp with aspect ratio preservation customisation
 
 ### To be implemented:
 - Download of other media types (video streams, blobs, etc.)
@@ -35,21 +37,26 @@ npm run server
 ```
 
 ## Usage
+#### Scrape <img> elements (default element target if `-t` is omitted):
+```bash
+sscraper -u "https://www.cnn.com"
+```
+
 #### Scrape two URLs, collect the JSON for <img> and <article> elements found and attempt to download their media content:
 ```bash
 sscraper -d -u "https://www.bbc.com" -u "https://www.cnn.com" -t "img" -t "article"
 ```
- 
-#### Scrape the root <html> element by default:
+
+#### Scrape a range of pages from the same host (using the syntax `{{[start]-[end]}}`):
 ```bash
-sscraper -u "https://www.cnn.com"
+sscraper -u "https://www.bbc.com/images/{{42-101}}/image.jpg"
 ```
 
 #### Scrape URLs via attribute and file:
 ```bash
 sscraper -u "https://www.bbc.com" -t "img" -l "./tmp/urls.txt"
 ```
-  
+
 #### Specify custom attributes for media downloads:
 ```bash
 sscraper -u "https://www.bbc.com" -t "img" -a "data-image-source"
@@ -59,7 +66,9 @@ sscraper -u "https://www.bbc.com" -t "img" -a "data-image-source"
 ```
   -u, --url       URL(s) to scrape.
   -l, --list      Path to a file containing newline-separated list of URLs.
-  -f, --format    Download images from the target selector's child elements matching input format(s). Omit this parameter to check for all standard formats.
+  -f, --format    Download images from the target selector's child elements matching input format(s).
   -a --attribute  Look for the specified attribute(s) on media elements and collect the URL value(s) for download.
-  -t, --target    Target selector(s) to scrape and/or search for media sources in. e.g. "#main", ".some-class > p", "input[name='radios']". Omit this parameter to target the root html element.
+  -t, --target    Target selector(s) to scrape and/or search for media sources in. e.g. "#main", ".some-class > p", "input[name='radios']".
+  -r, --resize    Resize downloaded images to specified "[width]x[height]" dimensions. Example: -r 300x300
+  -f, --fit       Use a specific method to fit an image after resizing. Defaults to "contain" which will preserve the aspect ratio and letterbox the image if needed. https://sharp.pixelplumbing.com/api-resize#resize for details about each method.
 ```
