@@ -1,5 +1,5 @@
 {
-  "name": "@ssk101/simple-scraper",
+  "name": "@ssk101/scraper",
   "author": "ssk101",
   "version": "1.0.0",
   "license": "GPL-3.0-or-later",
@@ -11,12 +11,12 @@
     "image scraper"
   ],
   "bugs": {
-    "url": "https://github.com/ssk101/simple-scraper/issues"
+    "url": "https://github.com/ssk101/scraper/issues"
   },
-  "homepage": "https://github.com/ssk101/simple-scraper#readme",
+  "homepage": "https://github.com/ssk101/scraper#readme",
   "repository": {
     "type": "git",
-    "url": "ssh://git@github.com/ssk101/simple-scraper.git"
+    "url": "ssh://git@github.com/ssk101/scraper.git"
   },
   "main": "index.js",
   "type": "module",
