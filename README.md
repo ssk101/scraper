@@ -62,6 +62,25 @@ sscraper -u "https://www.bbc.com" -t "img" -l "./tmp/urls.txt"
 sscraper -u "https://www.bbc.com" -t "img" -a "data-image-source"
 ```
 
+#### Advanced JSON targets structure - Following redirects
+This will scrape a range of pages from 1 to 9 for the website `some.website.com` bypassing a redirect to the target media element. The `followSrc` object can nest itself if there are more redirects to traverse.
+
+```json
+[
+  {
+    "href": "https://some.website.com/images//index.php?page={{1-9}}",
+    "targets": [{
+      "selector": ".main-content .product iframe[src^=\"https://follow\"]",
+      "attribute": "src",
+      "followSrc": {
+        "selector": "script[type=\"text/javascript\"][src=\"//follow.this.net/something.js\"] + a",
+        "attribute": "innerText"
+      }
+    }]
+  }
+]
+```
+
 ## CLI arguments
 ```
   -u, --url       URL(s) to scrape.

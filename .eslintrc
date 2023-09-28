@@ -1,0 +1,39 @@
+{
+  "parser": "babel-eslint",
+  "extends": "standard",
+  "env": {
+    "browser": true,
+    "node": true
+  },
+  "plugins": [
+    "babel",
+    "only-warn"
+  ],
+  "globals": {
+    "config": "readonly"
+  },
+  "rules": {
+    "max-len": [ 1, { "code": 80 } ],
+    "space-before-function-paren": ["error", "never"],
+    "comma-dangle": ["error", "always-multiline"],
+    "no-unused-expressions": "off",
+    "no-irregular-whitespace": 1,
+    "babel/no-unused-expressions": "error",
+    "keyword-spacing": ["error", {
+      "overrides": {
+        "if": {
+          "after": false
+        },
+        "for": {
+          "after": false
+        },
+        "while": {
+          "after": false
+        },
+        "switch": {
+          "after": false
+        }
+      }
+    }]
+  }
+}
