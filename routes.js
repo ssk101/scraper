@@ -1,4 +1,4 @@
-import { scrapeAll } from './scraper.js'
+import { scrape } from './scraper.js'
 
 const routes = {
   '/ping': {
@@ -9,7 +9,7 @@ const routes = {
   },
   '/scrape': {
     method: 'post',
-    handlers: [scrapeAll],
+    handlers: [scrape],
   },
 }
 

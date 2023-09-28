@@ -62,16 +62,15 @@ sscraper -u "https://www.bbc.com" -t "img" -l "./tmp/urls.txt"
 sscraper -u "https://www.bbc.com" -t "img" -a "data-image-source"
 ```
 
-#### Advanced JSON targets structure - Following redirects
-This will scrape a range of pages from 1 to 9 for the website `some.website.com` bypassing a redirect to the target media element. The `followSrc` object can nest itself if there are more redirects to traverse.
-
+#### Advanced JSON targets structure
 ```json
 [
   {
-    "href": "https://some.website.com/images//index.php?page={{1-9}}",
+    "href": "https://some.website.com/textures//index.php?page={{1-9}}",
     "targets": [{
       "selector": ".main-content .product iframe[src^=\"https://follow\"]",
       "attribute": "src",
+      "namespace": ["wood", "oak"],
       "followSrc": {
         "selector": "script[type=\"text/javascript\"][src=\"//follow.this.net/something.js\"] + a",
         "attribute": "innerText"
@@ -80,6 +79,14 @@ This will scrape a range of pages from 1 to 9 for the website `some.website.com`
   }
 ]
 ```
+
+- `href` (string): **Required**. The URL to scrape all `targets` from. The `{{n-n}}` syntax can be used to specify a range of pages to scrape sequentially instead of needing to create individual items per page, if the href is otherwise identical for each page in the range.
+- `targets` (array): **Required**. Array of targets the scraper will look for. Can be an array of CSS selector strings () or an array of objects with the properties:
+- `selector` (string): **Required**. The CSS selector for targeting the media element.
+- `attribute` (string): _Optional_ The attribute which holds the href of the media element or the base64 string if the element is inlined. If omitted, the scraper will look for `data-src`, `src` and `style`.
+- `namespace` (array): _Optional_. The subdirectory the found media elements will be placed in
+- `followSrc` (object): _Optional_. This will follow a redirect to the target media element. The `followSrc` object can nest itself to traverse deeper. Must have the `selector` and `attribute` properties.
+
 
 ## CLI arguments
 ```

@@ -6,7 +6,6 @@ import { base62 } from './utils/uid.js'
 import MIME_TYPES from './lib/mime-types.json' assert { type: 'json' }
 
 const logger = new Logger('[scraper]')
-const dlLogger = new Logger('[media download]')
 let sharp
 
 async function tryFetch(url) {
@@ -28,9 +27,9 @@ function ensureDir(path) {
   }
 }
 
-export async function scrapeAll(req, res, next) {
+export async function scrape(req, res, next) {
   const {
-    urls,
+    hrefItems,
     targets,
     outDir,
     jsonLogs,
@@ -50,7 +49,7 @@ export async function scrapeAll(req, res, next) {
     }
 
     if(!width || !height || isNaN(width) || isNaN(height)) {
-      dlLogger.warn('Invalid dimensions for resize provided, skipping resize operation. Got: ', { width, height })
+      logger.warn('Invalid dimensions for resize provided, skipping resize operation. Got: ', { width, height })
     } else {
       sharp = (await import('sharp')).default
     }
@@ -58,24 +57,25 @@ export async function scrapeAll(req, res, next) {
 
   let totalMediaItems = 0
 
-  for(const urlItem of urls) {
-    const href = urlItem.href || urlItem
-    const urlTargets = urlItem.targets
-    const rangePattern = /{{(\d+-\d+)}}/
-    const [matched] = href.match(rangePattern)?.slice(1) || []
+  for(const hrefItem of hrefItems) {
+    const href = hrefItem.href || hrefItem
+    const hrefTargets = hrefItem.targets
+    const namespace = hrefItem.namespace || []
+    const paginationPattern = /{{(\d+-\d+)}}/
+    const [matched] = href.match(paginationPattern)?.slice(1) || []
 
     if(matched) {
       const [start, end] = matched?.split('-')
 
       for(const iter of [...Array(+end - +start + 1).keys()].map(i => i + +start)) {
-        await scrapeURL(href.replace(rangePattern, iter), targets)
+        await scrapeHref(href.replace(paginationPattern, iter), targets, namespace)
       }
     } else {
-      await scrapeURL(href, urlTargets)
+      await scrapeHref(href, hrefTargets, namespace)
     }
   }
 
-  async function scrapeURL(href, urlTargets) {
+  async function scrapeHref(href, hrefTargets, namespace) {
     const url = new URL(href)
     const { hostname } = url
 
@@ -83,9 +83,9 @@ export async function scrapeAll(req, res, next) {
     let mediaItems = 0
 
     const selectorData = []
-    const urlDir = ensureDir(`${outDir}/${hostname}`)
-    const JSONDir = jsonLogs ? ensureDir(`${urlDir}/JSON`) : null
-    const mediaDir = ensureDir(`${urlDir}/media`)
+    const hostnameDir = ensureDir(`${outDir}/${hostname}`)
+    const JSONDir = jsonLogs ? ensureDir(`${hostnameDir}/JSON`) : null
+    const mediaDir = ensureDir(`${hostnameDir}/media`)
 
     logger.info('Scraping', { href })
 
@@ -100,10 +100,10 @@ export async function scrapeAll(req, res, next) {
       })
     }
 
-    for(const targetItem of (urlTargets || targets)) {
-      let selector = targetItem.selector || targetItem
+    for(const hrefTarget of (hrefTargets || targets)) {
+      let selector = hrefTarget.selector || hrefTarget
 
-      if(targetItem.followSrc) {
+      if(hrefTarget.followSrc) {
         async function traverse(html, item) {
           const elements = findElements(html, item.selector)
 
@@ -136,7 +136,7 @@ export async function scrapeAll(req, res, next) {
           }
         }
 
-        await traverse(html, targetItem)
+        await traverse(html, hrefTarget)
 
       } else {
         selectorData.push({
@@ -148,37 +148,40 @@ export async function scrapeAll(req, res, next) {
 
     const targetMimeTypes = new Set()
 
-    for(const [mimeType, fmts] of Object.entries(MIME_TYPES)) {
-      if(fmts.some(format => mimeTypes.includes(format))) {
+    for(const [mimeType, formats] of Object.entries(MIME_TYPES)) {
+      if(formats.some(format => mimeTypes.includes(format))) {
         targetMimeTypes.add(mimeType)
       }
     }
 
     if(!targetMimeTypes.size) {
-      dlLogger.warn('No valid media mimeTypes selected. Valid mimeTypes:', Object.values(MIME_TYPES).flat())
+      logger.warn('No valid media mimeTypes selected. Valid mimeTypes:', Object.values(MIME_TYPES).flat())
     }
     const sources = selectorData.reduce((acc, selector) => {
       for(const element of selector.elements) {
         const { attributes } = element
 
         for(const mediaAttribute of mediaAttributes) {
-          const value = attributes[mediaAttribute]
+          const attributeValue = attributes[mediaAttribute]
 
-          if(!value) continue
+          if(!attributeValue) {
+            continue
+          }
 
           if(mediaAttribute === 'style') {
-            let extractedValues = value.match(/(?<=(background|background-image|list-style-image|border-image|border-image-source|mask-image|content|src):(\w+\(|)((.*)url\()("|'|))([^)]*)(?=\))/g)
+            let extractedValues = attributeValue
+              .match(/(?<=(background|background-image|list-style-image|border-image|border-image-source|mask-image|content|src):(\w+\(|)((.*)url\()("|'|))([^)]*)(?=\))/g)
+              ?.filter(value => value)
+              ?.map(value => value.trim())
+              ?.map(value => value.replace(/['"]/g, ''))
 
-            if(!extractedValues) continue
-
-            extractedValues = extractedValues
-              .filter(value => value)
-              .map(value => value.trim())
-              .map(value => value.replace(/['"]/g, ''))
+            if(!extractedValues) {
+              continue
+            }
 
             acc.push(...extractedValues || [])
           } else {
-            acc.push(value)
+            acc.push(attributeValue)
           }
         }
       }
@@ -204,30 +207,39 @@ export async function scrapeAll(req, res, next) {
         const contentType = headers.get('content-type')
 
         if(+status !== 200) {
-          dlLogger.warn('Unsuccessful response.', { status, mediaURL })
+          logger.warn('Unsuccessful response.', { status, mediaURL })
           continue
         }
 
         if(!targetMimeTypes.has(contentType)) {
-          dlLogger.warn('MIME type from response does not match requested format, skipping.', { contentType, mediaURL })
+          logger.warn('MIME type from response does not match requested format, skipping.', { contentType, mediaURL })
           continue
         }
 
-        const [mimeType, mimeTypes] = Object.entries(MIME_TYPES).find(([type, fmts]) => {
+        const [mimeType, mimeTypes] = Object.entries(MIME_TYPES).find(([type, formats]) => {
           return contentType === type
         })
 
         let buffer = await mediaResponse.buffer()
-        const strippedName = mediaURL.pathname
+        const sanitizedFilename = mediaURL.pathname
           .replace(/image(.*);base64.*/g, Date.now())
           .replace(/^\//, '')
           .replace(/[/\\~?%*:|"<>]/g, '.')
 
-        let filename = `${mediaDir}/${base62.encode(Date.now())}_${strippedName}`
+        const filepathParts = [
+          mediaDir,
+          ...namespace,
+        ]
 
-        if(!mimeTypes.includes(strippedName.split('.').pop())) {
-          filename += `.${mimeTypes[0]}`
+        ensureDir(filepathParts.join('/'))
+
+        filepathParts.push(`${base62.encode(Date.now())}_${sanitizedFilename}`)
+
+        if(!mimeTypes.includes(sanitizedFilename.split('.').pop())) {
+          filepathParts.push(`.${mimeTypes[0]}`)
         }
+
+        const filepath = filepathParts.join('/')
 
         if(sharp) {
           buffer = await sharp(buffer)
@@ -236,25 +248,25 @@ export async function scrapeAll(req, res, next) {
         }
 
         try {
-          fs.writeFileSync(filename, buffer, 'binary')
+          fs.writeFileSync(filepath, buffer, 'binary')
         } catch (e) {
-          dlLogger.error('Unable to write file', { filename })
+          logger.error('Unable to write file', { filepath })
           throw new Error(e)
         }
 
         mediaItems += 1
 
-        dlLogger.log([
+        logger.log([
           [
             mediaItems.toString().padStart(sources.length.toString().length, 0),
             '/',
             sources.length,
           ].join(''),
           'Downloaded',
-          filename,
+          filepath,
         ].join(' '))
       } catch (e) {
-        dlLogger.warn('GET request failed.', { e, mediaURL })
+        logger.warn('GET request failed.', { e, mediaURL })
         continue
       }
     }

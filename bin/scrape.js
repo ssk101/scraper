@@ -124,7 +124,7 @@ if(fs.existsSync(listFilePath)) {
 
 }
 
-const urls = new Set([...argURLs, ...listContent])
+const hrefItems = Array.from(new Set([...argURLs, ...listContent]))
 
 try {
   try {
@@ -149,7 +149,7 @@ try {
     },
     method: 'POST',
     body: JSON.stringify({
-      urls: Array.from(urls),
+      hrefItems,
       outDir,
       jsonLogs,
       targets,
